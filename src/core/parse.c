@@ -186,20 +186,30 @@ static void popstate(JanetParser *p, Janet val) {
             push_arg(p, val);
             return;
         } else if (newtop->flags & PFLAG_READERMAC) {
-            Janet *t = janet_tuple_begin(2);
             int c = newtop->flags & 0xFF;
-            const char *which =
-                (c == '\'') ? "quote" :
-                (c == ',') ? "unquote" :
-                (c == ';') ? "splice" :
-                (c == '|') ? "short-fn" :
-                (c == '~') ? "quasiquote" : "<unknown>";
-            t[0] = janet_csymbolv(which);
-            t[1] = val;
-            /* Quote source mapping info */
-            janet_tuple_sm_line(t) = (int32_t) newtop->line;
-            janet_tuple_sm_column(t) = (int32_t) newtop->column;
-            val = janet_wrap_tuple(janet_tuple_end(t));
+            if (c == '\\' && janet_checktype(val, JANET_TUPLE)) {
+                const Janet *vals = janet_unwrap_tuple(val);
+                int len = janet_tuple_length(vals);
+                const Janet *t = janet_tuple_1n(janet_csymbolv("partial"), vals, len);
+                janet_tuple_sm_line(t) = (int32_t) newtop->line;
+                janet_tuple_sm_column(t) = (int32_t) newtop->column;
+                val = janet_wrap_tuple(t);
+            } else {
+                Janet *t = janet_tuple_begin(2);
+                const char *which =
+                    (c == '\'') ? "quote" :
+                    (c == ',') ? "unquote" :
+                    (c == ';') ? "splice" :
+                    (c == '\\') ? "partial" :
+                    (c == '|') ? "short-fn" :
+                    (c == '~') ? "quasiquote" : "<unknown>";
+                t[0] = janet_csymbolv(which);
+                t[1] = val;
+                /* Quote source mapping info */
+                janet_tuple_sm_line(t) = (int32_t) newtop->line;
+                janet_tuple_sm_column(t) = (int32_t) newtop->column;
+                val = janet_wrap_tuple(janet_tuple_end(t));
+            }
         } else {
             return;
         }
@@ -622,8 +632,9 @@ static int root(JanetParser *p, JanetParseState *state, uint8_t c) {
         case '\'':
         case ',':
         case ';':
-        case '~':
+        case '\\':
         case '|':
+        case '~':
             pushstate(p, root, PFLAG_READERMAC | c);
             return 1;
         case '"':

@@ -553,6 +553,15 @@
 # 5f5147652
 (assert (= (|(+ $0 $99) ;(range 100)) 99) "function shorthand 10")
 
+# Partial shorthand
+(assert (= (macex ~\f) (macex ~(partial f))) "shorthand partial argless 1")
+(assert (= (macex ~\(f)) (macex ~(partial f))) "shorthand partial argless 2")
+(assert (= (macex ~\(f arg)) (macex ~(partial f arg))) "shorthand partial 1 arg")
+(assert (= (macex ~\(f arg0 arg1)) (macex ~(partial f arg0 arg1))) "shorthand partial 2 args")
+(assert (= (macex ~\(f arg0 arg1 arg2)) (macex ~(partial f arg0 arg1 arg2))) "shorthand partial 3 args")
+(assert (= (macex ~\\\f) (macex ~(partial partial partial f))) "nested shorthand partial 1")
+(assert (= (((\\\+ 1)2)3) 6) "nested shorthand partial 2")
+
 # 655d4b3aa
 (defn idx= [x y] (= (tuple/slice x) (tuple/slice y)))
 

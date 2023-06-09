@@ -53,6 +53,14 @@ const Janet *janet_tuple_n(const Janet *values, int32_t n) {
     return janet_tuple_end(t);
 }
 
+/* Build a tuple with 1 + n values */
+const Janet *janet_tuple_1n(Janet first, const Janet *rest, int32_t n) {
+    Janet *t = janet_tuple_begin(1 + n);
+    t[0] = first;
+    safe_memcpy(&t[1], rest, sizeof(Janet) * n);
+    return janet_tuple_end(t);
+}
+
 /* C Functions */
 
 JANET_CORE_FN(cfun_tuple_brackets,
