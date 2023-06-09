@@ -2302,7 +2302,9 @@
   (def expanded (macex arg on-binding))
   (def name-splice (if name [name] []))
   (def fn-args (seq [i :range [0 (+ 1 max-param-seen)]] (symbol prefix '$ i)))
-  ~(fn ,;name-splice [,;fn-args ,;(if vararg ['& (symbol prefix '$&)] [])] ,expanded))
+  (if (or (> max-param-seen -1) vararg)
+    ~(fn ,;name-splice [,;fn-args ,;(if vararg ['& (symbol prefix '$&)] [])] ,expanded)
+    ~(fn ,;name-splice [& ,prefix] (,;expanded ;,prefix))))
 
 ###
 ###
