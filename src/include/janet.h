@@ -868,12 +868,15 @@ JANET_API Janet janet_nanbox32_from_tagp(uint32_t tag, void *pointer);
 #endif
 
 JANET_API int janet_checkint(Janet x);
+JANET_API int janet_checkuint(Janet x);
 JANET_API int janet_checkint64(Janet x);
 JANET_API int janet_checkuint64(Janet x);
 JANET_API int janet_checksize(Janet x);
 JANET_API JanetAbstract janet_checkabstract(Janet x, const JanetAbstractType *at);
 #define janet_checkintrange(x) ((x) >= INT32_MIN && (x) <= INT32_MAX && (x) == (int32_t)(x))
+#define janet_checkuintrange(x) ((x) >= 0 && (x) <= UINT32_MAX && (x) == (uint32_t)(x))
 #define janet_checkint64range(x) ((x) >= JANET_INTMIN_DOUBLE && (x) <= JANET_INTMAX_DOUBLE && (x) == (int64_t)(x))
+#define janet_checkuint64range(x) ((x) >= 0 && (x) <= JANET_INTMAX_DOUBLE && (x) == (uint64_t)(x))
 #define janet_unwrap_integer(x) ((int32_t) janet_unwrap_number(x))
 #define janet_wrap_integer(x) janet_wrap_number((int32_t)(x))
 
@@ -2051,6 +2054,7 @@ JANET_API int janet_cryptorand(uint8_t *out, size_t n);
 JANET_API void janet_marshal_size(JanetMarshalContext *ctx, size_t value);
 JANET_API void janet_marshal_int(JanetMarshalContext *ctx, int32_t value);
 JANET_API void janet_marshal_int64(JanetMarshalContext *ctx, int64_t value);
+JANET_API void janet_marshal_ptr(JanetMarshalContext *ctx, const void *value);
 JANET_API void janet_marshal_byte(JanetMarshalContext *ctx, uint8_t value);
 JANET_API void janet_marshal_bytes(JanetMarshalContext *ctx, const uint8_t *bytes, size_t len);
 JANET_API void janet_marshal_janet(JanetMarshalContext *ctx, Janet x);
@@ -2060,6 +2064,7 @@ JANET_API void janet_unmarshal_ensure(JanetMarshalContext *ctx, size_t size);
 JANET_API size_t janet_unmarshal_size(JanetMarshalContext *ctx);
 JANET_API int32_t janet_unmarshal_int(JanetMarshalContext *ctx);
 JANET_API int64_t janet_unmarshal_int64(JanetMarshalContext *ctx);
+JANET_API void *janet_unmarshal_ptr(JanetMarshalContext *ctx);
 JANET_API uint8_t janet_unmarshal_byte(JanetMarshalContext *ctx);
 JANET_API void janet_unmarshal_bytes(JanetMarshalContext *ctx, uint8_t *dest, size_t len);
 JANET_API Janet janet_unmarshal_janet(JanetMarshalContext *ctx);
