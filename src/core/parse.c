@@ -152,6 +152,8 @@ DEF_PARSER_STACK(_pushstate, JanetParseState, states, statecount, statecap)
 #define PFLAG_COMMENT 0x20000
 #define PFLAG_TOKEN 0x40000
 
+static int root(JanetParser *p, JanetParseState *state, uint8_t c);
+
 static void pushstate(JanetParser *p, Consumer consumer, int flags) {
     JanetParseState s;
     s.counter = 0;
@@ -186,20 +188,26 @@ static void popstate(JanetParser *p, Janet val) {
             push_arg(p, val);
             return;
         } else if (newtop->flags & PFLAG_READERMAC) {
-            Janet *t = janet_tuple_begin(2);
-            int c = newtop->flags & 0xFF;
-            const char *which =
-                (c == '\'') ? "quote" :
-                (c == ',') ? "unquote" :
-                (c == ';') ? "splice" :
-                (c == '|') ? "short-fn" :
-                (c == '~') ? "quasiquote" : "<unknown>";
-            t[0] = janet_csymbolv(which);
-            t[1] = val;
-            /* Quote source mapping info */
-            janet_tuple_sm_line(t) = (int32_t) newtop->line;
-            janet_tuple_sm_column(t) = (int32_t) newtop->column;
-            val = janet_wrap_tuple(janet_tuple_end(t));
+             int c = newtop->flags & 0xFF;
+             if (c == '|' && janet_checktype(val, JANET_SYMBOL) && strcmp(janet_nanbox_to_pointer(val), "&") == 0) {
+                 newtop->flags = PFLAG_READERMAC | '&';
+                 return;
+             } else {
+                 Janet *t = janet_tuple_begin(2);
+                 const char *which =
+                     (c == '&') ? "partial" :
+                     (c == '\'') ? "quote" :
+                     (c == ',') ? "unquote" :
+                     (c == ';') ? "splice" :
+                     (c == '|') ? "short-fn" :
+                     (c == '~') ? "quasiquote" : "<unknown>";
+                 t[0] = janet_csymbolv(which);
+                 t[1] = val;
+                 /* Quote source mapping info */
+                 janet_tuple_sm_line(t) = (int32_t) newtop->line;
+                 janet_tuple_sm_column(t) = (int32_t) newtop->column;
+                 val = janet_wrap_tuple(janet_tuple_end(t));
+            }
         } else {
             return;
         }
@@ -578,8 +586,6 @@ static int longstring(JanetParser *p, JanetParseState *state, uint8_t c) {
         return 1;
     }
 }
-
-static int root(JanetParser *p, JanetParseState *state, uint8_t c);
 
 static int atsign(JanetParser *p, JanetParseState *state, uint8_t c) {
     (void) state;
