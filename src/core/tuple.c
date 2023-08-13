@@ -37,12 +37,13 @@ Janet *janet_tuple_begin(int32_t length) {
     head->sm_line = -1;
     head->sm_column = -1;
     head->length = length;
+    head->hash = 0;
     return (Janet *)(head->data);
 }
 
 /* Finish building a tuple */
 const Janet *janet_tuple_end(Janet *tuple) {
-    janet_tuple_hash(tuple) = janet_array_calchash(tuple, janet_tuple_length(tuple));
+    // defer hashing until if and when it is actually needed
     return (const Janet *)tuple;
 }
 
@@ -51,6 +52,14 @@ const Janet *janet_tuple_n(const Janet *values, int32_t n) {
     Janet *t = janet_tuple_begin(n);
     safe_memcpy(t, values, sizeof(Janet) * n);
     return janet_tuple_end(t);
+}
+
+int32_t janet_tuple_hash(const Janet *tuple) {
+    JanetTupleHead *head = janet_tuple_head(tuple);
+    if (head->hash == 0) {
+        head->hash = janet_array_calchash(tuple, head->length);
+    }
+    return head->hash;
 }
 
 /* C Functions */

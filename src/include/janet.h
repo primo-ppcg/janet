@@ -1614,10 +1614,10 @@ JANET_API void janet_buffer_push_u64(JanetBuffer *buffer, uint64_t x);
 #define janet_tuple_head(t) ((JanetTupleHead *)((char *)t - offsetof(JanetTupleHead, data)))
 #define janet_tuple_from_head(gcobject) ((JanetTuple)((char *)gcobject + offsetof(JanetTupleHead, data)))
 #define janet_tuple_length(t) (janet_tuple_head(t)->length)
-#define janet_tuple_hash(t) (janet_tuple_head(t)->hash)
 #define janet_tuple_sm_line(t) (janet_tuple_head(t)->sm_line)
 #define janet_tuple_sm_column(t) (janet_tuple_head(t)->sm_column)
 #define janet_tuple_flag(t) (janet_tuple_head(t)->gc.flags)
+JANET_API int32_t janet_tuple_hash(const Janet *tuple);
 JANET_API Janet *janet_tuple_begin(int32_t length);
 JANET_API JanetTuple janet_tuple_end(Janet *tuple);
 JANET_API JanetTuple janet_tuple_n(const Janet *values, int32_t n);
