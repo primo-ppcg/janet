@@ -1522,6 +1522,36 @@ static struct tm *time_to_tm(const Janet *argv, int32_t argc, int32_t n, struct 
     return t_info;
 }
 
+/* Helper function to convert a struct tm to a Janet date struct. */
+static Janet tm_to_janet_date_struct(struct tm *t_info) {
+    JanetKV *st = janet_struct_begin(9);
+    janet_struct_put(st, janet_ckeywordv("seconds"), janet_wrap_number(t_info->tm_sec));
+    janet_struct_put(st, janet_ckeywordv("minutes"), janet_wrap_number(t_info->tm_min));
+    janet_struct_put(st, janet_ckeywordv("hours"), janet_wrap_number(t_info->tm_hour));
+    janet_struct_put(st, janet_ckeywordv("month-day"), janet_wrap_number(t_info->tm_mday - 1));
+    janet_struct_put(st, janet_ckeywordv("month"), janet_wrap_number(t_info->tm_mon));
+    janet_struct_put(st, janet_ckeywordv("year"), janet_wrap_number(t_info->tm_year + 1900));
+    janet_struct_put(st, janet_ckeywordv("week-day"), janet_wrap_number(t_info->tm_wday));
+    janet_struct_put(st, janet_ckeywordv("year-day"), janet_wrap_number(t_info->tm_yday));
+    janet_struct_put(st, janet_ckeywordv("dst"), janet_wrap_boolean(t_info->tm_isdst));
+    return janet_wrap_struct(janet_struct_end(st));
+}
+
+/* Helper function to verify a time format string, or panic if invalid. */
+static void verify_time_fmt(const char *fmt) {
+    /* ANSI X3.159-1989, section 4.12.3.5 "The strftime function" */
+    static const char *valid = "aAbBcdHIjmMpSUwWxXyYZ%";
+    const char *p = fmt;
+    while (*p) {
+        if (*p++ == '%') {
+            if (!strchr(valid, *p)) {
+                janet_panicf("invalid conversion specifier '%%%c'", *p);
+            }
+            p++;
+        }
+    }
+}
+
 JANET_CORE_FN(os_date,
               "(os/date &opt time local)",
               "Returns the given time as a date struct, or the current time if `time` is not given. "
@@ -1541,17 +1571,7 @@ JANET_CORE_FN(os_date,
     (void) argv;
     struct tm t_infos;
     struct tm *t_info = time_to_tm(argv, argc, 0, &t_infos);
-    JanetKV *st = janet_struct_begin(9);
-    janet_struct_put(st, janet_ckeywordv("seconds"), janet_wrap_number(t_info->tm_sec));
-    janet_struct_put(st, janet_ckeywordv("minutes"), janet_wrap_number(t_info->tm_min));
-    janet_struct_put(st, janet_ckeywordv("hours"), janet_wrap_number(t_info->tm_hour));
-    janet_struct_put(st, janet_ckeywordv("month-day"), janet_wrap_number(t_info->tm_mday - 1));
-    janet_struct_put(st, janet_ckeywordv("month"), janet_wrap_number(t_info->tm_mon));
-    janet_struct_put(st, janet_ckeywordv("year"), janet_wrap_number(t_info->tm_year + 1900));
-    janet_struct_put(st, janet_ckeywordv("week-day"), janet_wrap_number(t_info->tm_wday));
-    janet_struct_put(st, janet_ckeywordv("year-day"), janet_wrap_number(t_info->tm_yday));
-    janet_struct_put(st, janet_ckeywordv("dst"), janet_wrap_boolean(t_info->tm_isdst));
-    return janet_wrap_struct(janet_struct_end(st));
+    return tm_to_janet_date_struct(t_info);
 }
 
 #define SIZETIMEFMT     250
@@ -1564,22 +1584,31 @@ JANET_CORE_FN(os_strftime,
               "the local timezone.") {
     janet_arity(argc, 1, 3);
     const char *fmt = janet_getcstring(argv, 0);
-    /* ANSI X3.159-1989, section 4.12.3.5 "The strftime function" */
-    static const char *valid = "aAbBcdHIjmMpSUwWxXyYZ%";
-    const char *p = fmt;
-    while (*p) {
-        if (*p++ == '%') {
-            if (!strchr(valid, *p)) {
-                janet_panicf("invalid conversion specifier '%%%c'", *p);
-            }
-            p++;
-        }
-    }
+    (void)verify_time_fmt(fmt);
     struct tm t_infos;
     struct tm *t_info = time_to_tm(argv, argc, 1, &t_infos);
     char buf[SIZETIMEFMT];
     (void)strftime(buf, SIZETIMEFMT, fmt, t_info);
     return janet_cstringv(buf);
+}
+
+#ifdef JANET_WINDOWS
+static void strptime(const char* str, const char* fmt, struct tm *t_info) {
+    //stub
+}
+#endif
+
+JANET_CORE_FN(os_strptime,
+              "(so/strptime str fmt)",
+              "The complement function to `os/strptime`. Parses a datetime string according to "
+              "the given format into a date struct.") {
+    janet_fixarity(argc, 2);
+    const char *str = janet_getcstring(argv, 0);
+    const char *fmt = janet_getcstring(argv, 1);
+    (void)verify_time_fmt(fmt);
+    struct tm t_infos = (const struct tm) { 0 };
+    (void)strptime(str, fmt, &t_infos);
+    return tm_to_janet_date_struct(&t_infos);
 }
 
 static int entry_getdst(Janet env_entry) {
@@ -2485,6 +2514,7 @@ void janet_lib_os(JanetTable *env) {
         JANET_CORE_REG("os/time", os_time), /* not high resolution */
         JANET_CORE_REG("os/date", os_date), /* not high resolution */
         JANET_CORE_REG("os/strftime", os_strftime),
+        JANET_CORE_REG("os/strptime", os_strptime),
         JANET_CORE_REG("os/sleep", os_sleep),
         JANET_CORE_REG("os/isatty", os_isatty),
 
