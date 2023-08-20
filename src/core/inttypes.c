@@ -585,59 +585,62 @@ OPMETHOD(uint64_t, u64, rshift, >>)
 #undef DIVMETHOD_SIGNED
 #undef COMPMETHOD
 
+static const size_t NUM_METHODS = 24;
+
+// NB. lexicographically sorted
 static JanetMethod it_s64_methods[] = {
-    {"+", cfun_it_s64_add},
-    {"r+", cfun_it_s64_add},
-    {"-", cfun_it_s64_sub},
-    {"r-", cfun_it_s64_subi},
-    {"*", cfun_it_s64_mul},
-    {"r*", cfun_it_s64_mul},
-    {"/", cfun_it_s64_div},
-    {"r/", cfun_it_s64_divi},
-    {"div", cfun_it_s64_divf},
-    {"rdiv", cfun_it_s64_divfi},
-    {"mod", cfun_it_s64_mod},
-    {"rmod", cfun_it_s64_modi},
     {"%", cfun_it_s64_rem},
-    {"r%", cfun_it_s64_remi},
     {"&", cfun_it_s64_and},
-    {"r&", cfun_it_s64_and},
-    {"|", cfun_it_s64_or},
-    {"r|", cfun_it_s64_or},
-    {"^", cfun_it_s64_xor},
-    {"r^", cfun_it_s64_xor},
-    {"~", cfun_it_s64_not},
+    {"*", cfun_it_s64_mul},
+    {"+", cfun_it_s64_add},
+    {"-", cfun_it_s64_sub},
+    {"/", cfun_it_s64_div},
     {"<<", cfun_it_s64_lshift},
     {">>", cfun_it_s64_rshift},
+    {"^", cfun_it_s64_xor},
     {"compare", cfun_it_s64_compare},
+    {"div", cfun_it_s64_divf},
+    {"mod", cfun_it_s64_mod},
+    {"r%", cfun_it_s64_remi},
+    {"r&", cfun_it_s64_and},
+    {"r*", cfun_it_s64_mul},
+    {"r+", cfun_it_s64_add},
+    {"r-", cfun_it_s64_subi},
+    {"r/", cfun_it_s64_divi},
+    {"r^", cfun_it_s64_xor},
+    {"rdiv", cfun_it_s64_divfi},
+    {"rmod", cfun_it_s64_modi},
+    {"r|", cfun_it_s64_or},
+    {"|", cfun_it_s64_or},
+    {"~", cfun_it_s64_not},
     {NULL, NULL}
 };
 
 static JanetMethod it_u64_methods[] = {
-    {"+", cfun_it_u64_add},
-    {"r+", cfun_it_u64_add},
-    {"-", cfun_it_u64_sub},
-    {"r-", cfun_it_u64_subi},
-    {"*", cfun_it_u64_mul},
-    {"r*", cfun_it_u64_mul},
-    {"/", cfun_it_u64_div},
-    {"r/", cfun_it_u64_divi},
-    {"div", cfun_it_u64_div},
-    {"rdiv", cfun_it_u64_divi},
-    {"mod", cfun_it_u64_mod},
-    {"rmod", cfun_it_u64_modi},
     {"%", cfun_it_u64_rem},
-    {"r%", cfun_it_u64_remi},
     {"&", cfun_it_u64_and},
-    {"r&", cfun_it_u64_and},
-    {"|", cfun_it_u64_or},
-    {"r|", cfun_it_u64_or},
-    {"^", cfun_it_u64_xor},
-    {"r^", cfun_it_u64_xor},
-    {"~", cfun_it_u64_not},
+    {"*", cfun_it_u64_mul},
+    {"+", cfun_it_u64_add},
+    {"-", cfun_it_u64_sub},
+    {"/", cfun_it_u64_div},
     {"<<", cfun_it_u64_lshift},
     {">>", cfun_it_u64_rshift},
+    {"^", cfun_it_u64_xor},
     {"compare", cfun_it_u64_compare},
+    {"div", cfun_it_u64_div},
+    {"mod", cfun_it_u64_mod},
+    {"r%", cfun_it_u64_remi},
+    {"r&", cfun_it_u64_and},
+    {"r*", cfun_it_u64_mul},
+    {"r+", cfun_it_u64_add},
+    {"r-", cfun_it_u64_subi},
+    {"r/", cfun_it_u64_divi},
+    {"r^", cfun_it_u64_xor},
+    {"rdiv", cfun_it_u64_divi},
+    {"rmod", cfun_it_u64_modi},
+    {"r|", cfun_it_u64_or},
+    {"|", cfun_it_u64_or},
+    {"~", cfun_it_u64_not},
     {NULL, NULL}
 };
 
@@ -651,18 +654,37 @@ static Janet janet_uint64_next(void *p, Janet key) {
     return janet_nextmethod(it_u64_methods, key);
 }
 
+static int binsearch_getmethod(const uint8_t *key, const JanetMethod *methods, Janet *out) {
+    size_t lo = 0;
+    size_t hi = NUM_METHODS;
+    while (lo < hi) {
+        size_t mid = (lo + ((hi - lo) / 2));
+        JanetMethod method = methods[mid];
+        int comp = janet_cstrcmp(key, method.name);
+        if (comp < 0) {
+            hi = mid;
+        } else if (comp > 0) {
+            lo = mid + 1;
+        } else {
+            *out = janet_wrap_cfunction(method.cfun);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int it_s64_get(void *p, Janet key, Janet *out) {
     (void) p;
     if (!janet_checktype(key, JANET_KEYWORD))
         return 0;
-    return janet_getmethod(janet_unwrap_keyword(key), it_s64_methods, out);
+    return binsearch_getmethod(janet_unwrap_keyword(key), it_s64_methods, out);
 }
 
 static int it_u64_get(void *p, Janet key, Janet *out) {
     (void) p;
     if (!janet_checktype(key, JANET_KEYWORD))
         return 0;
-    return janet_getmethod(janet_unwrap_keyword(key), it_u64_methods, out);
+    return binsearch_getmethod(janet_unwrap_keyword(key), it_u64_methods, out);
 }
 
 /* Module entry point */
